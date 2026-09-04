@@ -1,0 +1,208 @@
+====================================================
+ClaudeInstall 排雷记录（2026-09-05）
+用途：记录本次排查修复 + 待真机(M3)验证项
+====================================================
+
+【背景】
+v0.2 本地体检通过后发现：最高危的雷埋在没有真机跑过的
+"干净机器全流程"路径上（本机 Node/Git/claude 都已装，走的是
+"跳过"分支）。本次对代码从头到尾排一遍，修复 5+1 项，记录 4 项。
+
+----------------------------------------------------
+一、已修复（代码改动）
+----------------------------------------------------
+
+【雷1】npm install -g 权限不足（高危）
+- 现象：小白双击 bat（非管理员），Windows 给受限令牌，
+  npm 全局目录在 C:\Program Files\nodejs 无写权限 → 装 claude 失败
+- 修复：ClaudeInstall一键安装.bat 开头加管理员检测
+  （net session）+ 非管理员用 Start-Process -Verb RunAs 提权重启自身
+- 验证：提权后整个流程以管理员跑，install.js 继承令牌无需另改
+
+【雷2】装完 claude 误报"未找到"（高危）
+- 现象：npm install -g 装完，当前窗口 PATH 未刷新，
+  ⑥验证 versionOf('claude') 返回 null → 实际装成功却报失败
+- 修复：install.js 新增 findClaude()——PATH 找不到时探测
+  两个已知全局 bin 路径（%AppData%\npm\claude.cmd、
+  C:\Program Files\nodejs\claude.cmd）
+- 三处统一改用：①环境检测 ③安装判断 ⑥验证
+- ⑥里区分：PATH 找到=真能跑（可实测连通）；
+  只在全局 bin 找到=已装好但需重开命令行（改提示不再误报）
+
+【雷3】Git 静默装授权窗口无提示挂死（中危）
+- 现象：installSilent 用 -Verb RunAs -Wait + 10分钟超时，
+  用户不敢点/点错就干等
+- 修复：install.js 调 ensureGit 前 warn 提示
+  "即将弹授权窗口请点是"；gitInstall.js 超时 600s→300s
+
+【雷4】重跑覆盖已有 env 配置（中危）
+- 现象：writeEnv 无条件覆盖 BASE_URL/AUTH_TOKEN/MODEL，
+  老用户已自定义中转会被改成 DeepSeek
+- 修复：README 安全说明补一条
+  "重跑会改写接入配置，请先备份 ~/.claude/settings.json"
+
+【雷5】download.js 重定向死循环（中危）
+- 现象：30x 递归跟随无上限，连环重定向会栈溢出
+- 修复：download() 签名加 redirects 计数，超过 5 跳返回
+  "too many redirects"
+
+【雷6】askKey 空输入死循环（低危，顺手修）
+- 现象：askKeyWithConfirm 空输入 continue 无限循环
+- 修复：连续 3 次空输入 → 黄警提示 + 取消安装（main 兜底退出）
+
+----------------------------------------------------
+二、已记录·待 M3 真机对照（不改代码）
+----------------------------------------------------
+
+【雷7】detect.js 硬编码本机路径
+- scripts/lib/detect.js 第59行 NEKO_PATHS 写死
+  D:\Claude_Files\002_项目\ClaudeNeko
+- 影响：分发给别人时 claudeNeko.present 恒 false，Env Report 失真
+- 处理：分发前改成可配置（环境变量已支持 CLAUDE_NEKO_DIR）或去掉
+
+【雷8】npmmirror Node LTS 镜像滞后
+- latest-v22.x 只到 22.20.0（官方 22.23.x），同为 LTS 可用
+- 处理：M3 真机看实际下载版本再评估
+
+【雷9】跳过登录配方有时效
+- hasCompletedOnboarding + env key 免登录是针对当前 claude 版本
+  的配方，大版本更新可能失效
+- 处理：M3 记录当时的 claude 版本号，将来失效有据可查
+  （本次本机 claude = 2.1.261）
+
+【雷10】安装器无数字签名
+- 无签名会被 SmartScreen/杀软拦"未知发布者"
+  （Node/Git 是我们下载后静默执行的，M3 重点观察）
+- 处理：免费分发品常态，README 已写"选择允许"；不指望签名
+
+----------------------------------------------------
+二点五、第二轮排雷（9-05 同日·盯改动本身+边界路径）
+----------------------------------------------------
+
+【雷11】提权重启丢参数（已修·bat）
+- 现象：非管理员双击时 Start-Process 提权重启没带 -ArgumentList，
+  命令行带参调用（--key/--dry-run）会被吞掉
+- 修复：有参（%~1 非空）→ 带 '%*' 提权；无参 → 走简单分支
+
+【雷17】干净机器首装必踩：刚装完 Node，本窗口 PATH 未刷新
+       （已修·bat + detect.js 双保险）
+- 现象：bat 检测到无 Node → 静默装好 → 用完整路径调 install.js，
+  但 install.js 内部 versionOf('node'/'npm') 走 PATH 找不到
+  → 报"缺少 Node.js"直接退出。M3 没跑过所以一直没暴露
+- 修复①（detect.js）：versionOf() PATH 找不到时，用 process.execPath
+  所在目录兜底探测 node.exe / npm.cmd（本进程正跑在 node 上，
+  node 一定可用）。实测：PATH 清空 + 完整路径启动 → node/npm 均探测到 ✅
+- 修复②（bat）：Node 检测/装好后，若 NODE_EXE 是完整路径（非 node），
+  把其所在目录临时加进本会话 PATH（已含则跳过），install.js 内
+  所有 npm/node 子进程调用都能命中
+
+【雷13】download.js 写文件流无错误监听（已修）
+- 现象：res.pipe(createWriteStream(tmp)) 没监听 ws error，
+  磁盘满/权限不足 → 未捕获异常崩溃（非干净失败）
+- 修复：ws 单独建变量 + ws.on('error') → done(false) 走清理路径
+
+【雷12】默认模型 deepseek-v4-flash[1m] 是否对"别人"通用（记录·待核实）
+- install.js 写死默认 MODEL = deepseek-v4-flash[1m]（用户本人现用配置）。
+  发给小白前需核实：这是否 DeepSeek 官方 Anthropic 端点公开可用的模型名，
+  还是含个人上下文参数（[1m]）的特例？若别人 key 不认 → 连通测试③失败
+- 处理：M3 用测试 key 实测一次连通；不行就把默认模型改为稳定公开名
+
+【雷14】net session 提权检测在某些环境可能误判（记录·M3 看）
+- 依赖 LanmanServer 服务，精简系统/部分家庭版可能异常
+- 备选：whoami /groups 查 S-1-16-12288（High integrity）
+- 处理：M3 若提权检测异常，替换为 whoami 方案
+
+【雷15】下载的安装包不清理（记录·可做可不做）
+- %TEMP%\ClaudeInstall\ 下 node.msi / Git exe 用完留着占空间（几十MB）
+- 处理：装完可顺手 del；M3 前做也行（低优先）
+
+----------------------------------------------------
+二点七、第三轮排雷（9-05 同日·命令拼接/版本下限/供应链视角）
+----------------------------------------------------
+
+【雷18】verify 命令含中文+引号，经 cmd shell 拼接会破坏（已修）
+- 现象：run() 在 Windows 走 shell:true，cmdArgs 会被 cmd 二次解析。
+  原 `claude -p '你好，请回复"OK"'` 的中文 + 双引号可能被拆坏/乱码
+- 修复：--verify 实测改用纯 ASCII 无空格无引号单 token：`claude -p hi`
+  （cmd 对单引号不认、空格会拆 token，多字符参数一律不安全）
+
+【雷19】Claude Code 需 Node 18+，老 Node 会装上跑不动（已修·bat+install.js）
+- 现象：检测到老 Node（如 v16）就"已装跳过"，但 claude-code 要求 18+，
+  npm 装得上、跑起来崩
+- 修复①（install.js）：node 主版本 <18 → err 明确提示升级，拦截退出
+- 修复②（bat）：版本 <18 也自动下载新版覆盖升级
+  - 用 PowerShell 读主版本判 <18（errorlevel 1 = 需升级）
+  - ⚠️ 坑：cmd 里 ^ 是转义符，正则锚点 ^v、转义 \. 不能经 -Command 传
+    → 改用 TrimStart('v') + Split('.')
+  - cmd for/f 解析空串会崩 → 不碰它，全交给 PowerShell
+- 实测：v16→升级 / v24→OK / v18 边界→OK / 空串→升级（兜底）✅
+
+【雷20】下载无完整性校验 + 长命令无超时（记录·M3/分发前考虑）
+- 现象：download.js 只校验 size 不校验 sha256；Git 固定版（2.46.0）本可
+  加 hash 却被源投毒也无法发现
+- npm install -g 无 timeout，网络差可能长时间挂起无反馈
+- 处理：Git 固定版可在分发前补 sha256 校验（npmmirror 提供对应 hash）；
+  npm 调用可加 spawnSync timeout + 进度提示。低优先，M3 观察
+
+----------------------------------------------------
+三、M3 真机验证清单（带干净机器时逐项对照）
+----------------------------------------------------
+1. 双击 bat → 应弹 UAC 提权（雷1）→ 点「是」
+2. 无 Node → 自动下载静默装 → 无 Git → 弹 UAC（雷3 提示文案）→ 点是
+3. 装 claude → ⑥ 应显示"已装好，重开命令行"而非报错（雷2）
+4. 重开窗口 claude 可用 → --verify 实测连通
+5. 全程观察杀软/SmartScreen 拦截（雷10）
+6. 记录实际下载的 Node/Git/claude 版本（雷8/雷9）
+7. 空 key 回车 3 次 → 应黄警退出不卡死（雷6）
+8. 【雷17 重点】无 Node 干净机 → bat 自动装 Node → 不应报"缺少 Node"，
+   应直接继续装 Git/claude（验证 execPath 兜底 + PATH 注入双保险）
+9. 【雷12 核实】--verify 实测连通，确认 deepseek-v4-flash[1m] 对测试 key 可用
+10. 【雷11】命令行带参跑一次（如 --key sk-x --dry-run），确认参数没被提权吞
+11. 装完看 %TEMP%\ClaudeInstall\ 是否留了安装包（雷15，若已做清理则无）
+12. 【雷19】装一台老 Node（v16）机器 → 应提示/自动升级到 18+，不硬装
+13. 【雷18】--verify 应能跑通（claude -p hi），不报命令解析错误
+
+----------------------------------------------------
+二点九、M2 阶段（9-05 打 exe 时）新挖雷 + 修复
+----------------------------------------------------
+
+【雷21】bat 编码 + 块结构致命 bug——之前三轮排雷全漏（已修·重大）
+- 现象：ClaudeInstall一键安装.bat 从 v0.1 起就**从未被真实执行过**
+  （本地测试只跑 `node install.js`，bat 全流程从没跑）。M2 打 exe 需要
+  调 bat 时才暴露：cmd 跑 bat 直接崩（乱码命令 / "was unexpected at this time"）
+- 根因（记忆库 8-12/8-22 早有教训，未应用到本项目）：
+  ① bat 是 UTF-8 无 BOM + LF 行尾 → cmd 按系统代码页(GBK)读 UTF-8 中文 → 乱码命令错位
+  ② 中文 echo/rem 在 if/else 括号块内 + 特殊字符(→（）^v \. -Command) → 块解析崩
+  ③ 单行双 if（`if not defined X if exist "path空格" set ...`）+ 括号块 → 解析崩
+- 修复（根治，非打补丁）：
+  ① bat 全改英文（中文提示交给全中文 exe 向导 + install.js 本身输出中文）
+  ② 转 CRLF 行尾
+  ③ 所有括号块结构 → goto :label 标签风格（无块最稳）
+  ④ 去掉 rem 注释里的 cmd 特殊字符
+- 验证：bat silent + dry-run 全链路 cmd 实测 exit 0（banner→检测→全流程→⑥验证）
+- 教训强化：**bat 别写中文 + 必须 CRLF + 避开括号块**（feedback_bat_encoding 再确认）；
+  涉及 bat 的改动必须 cmd 实测，不能只测被调用的 js
+
+【雷22】exe(UAC) 无法在纯后台自动化验证（记录·需用户点一次）
+- Inno PrivilegesRequired=admin → 静默安装也弹 UAC，后台 bash 无法点
+- 处理：M3 或桌面手动点一次「是」验证 exe 完整流程
+
+----------------------------------------------------
+三、🔒 方向思路（9-05 GitHub 调研后·存档，待用户判断，勿执行改造）
+----------------------------------------------------
+【发现】Claude Code 2026 年初已发布**原生安装器**，不再需要 Node/npm：
+  irm https://claude.ai/install.ps1 | iex  或  winget install Anthropic.ClaudeCode
+  → ClaudeInstall 现有架构（装 Node + npm 装 claude）的前提已过时
+
+【拆分】原生安装器替代了 ClaudeInstall 的一半，另一半仍独有：
+  被替代：装 Claude Code 本体 / 自动装 Node+Git（原生免这些依赖）
+  仍独有：填自己的 DeepSeek key → 自动写配置跳过 Anthropic 登录（官方要账号登录不接中转）
+          exe 全中文向导 + 国内网络免翻墙
+
+【方向候选】（v0.3 可能）从"帮你装 claude"改为"装好后帮你接入 DeepSeek/中转"=
+  官方原生安装器（一行命令装本体） + ClaudeInstall 专注：图形选服务商→填key→
+  自动写配置跳过登录→验证。需先核实原生器在国内可用性 + settings.json 兼容性。
+
+【GitHub 竞品调研结论】无直接竞品（9-05）：U-King 装全家桶未开源、ai-coding-welfare
+  只配不装、claude-init 是模板已归档。ClaudeInstall "只装 claude+接单服务商 exe" 生态位独特。
+====================================================

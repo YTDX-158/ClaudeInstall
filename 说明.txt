@@ -1,0 +1,19 @@
+ClaudeInstall — Claude 一键安装/配置工具（活跃）
+
+作用：一键安装配置 Claude Code（跨端一致），v0.2
+v0.2 新增（9-01）：
+  · 自动装 Git（npmmirror 主源静默装，失败黄警不阻塞）
+  · 启动器改名「ClaudeInstall一键安装.bat」（透明声明 + 锁目录）
+  · npm 镜像尊重已有配置（不覆盖用户自定义）
+  · key 粘贴提示 + 末尾回显确认（防复制错）
+  · 验证失败内联常见原因（key/网络/余额）
+  · 13 条排雷对策见 Git接入方案_v0.2.txt
+9-05 改名：原「ClaudeNeko 一键安装器」→「ClaudeInstall」（装的是 Claude Code 本体，不叫 Neko）
+9-05 M2 打 exe：`ClaudeInstall安装器.iss` + 编译产物 `dist_installer\ClaudeInstall安装器_v0.2.exe`
+  · 全中文向导：欢迎 → 填 DeepSeek key → 安装 → 完成（PrivilegesRequired=admin 一次 UAC）
+  · exe 收 key → 调 bat（--silent --key）→ bat 完成 Node/Git/claude 真实安装
+  · ⚠️ 雷21（重大）：bat 此前从未真实跑过——UTF-8无BOM+LF+中文+括号块 → cmd 必崩
+    已根治：全英文 + CRLF + goto 标签化（去括号块）；实测 exit 0
+用法：双击 `ClaudeInstall安装器_v0.2.exe`（小白）；或 `ClaudeInstall一键安装.bat`（英文终端版）
+依赖：Node.js（缺失自动下载安装）
+最近更新：2026-09-05（M2 打 exe 完成：雷21 bat 根治 + exe 产出；剩 exe 手动 UAC 验证 → M3 真机）
