@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ClaudeInstall 一键安装器 · 核心脚本 v0.2
+ * ClaudeInstall 一键安装器 · 核心脚本 v0.2.2
  * =====================================
  * 目标：把「装 Claude Code + 接 DeepSeek」压成一条命令。
  *   检测 Node → 设国内 npm 镜像 → 装 claude-code → 填 key → 自动写配置（跳过登录）→ 验证
@@ -71,8 +71,12 @@ function run(cmd, cmdArgs, opts = {}) {
     info(`[dry-run] 将执行: ${cmd} ${cmdArgs.join(' ')}`);
     return { status: 0 };
   }
-  const r = spawnSync(cmd, cmdArgs, {
-    shell: process.platform === 'win32', // Windows 下 npm 等是 .cmd，需要 shell
+  // Windows 下 npm/claude 是 .cmd 需 shell。拼单条命令行交 cmd（规避 DEP0190：
+  // shell:true + args 数组已被 Node 22.12+ 弃用且不转义）。安全前提：参数全是代码常量
+  // （npm flags/包名/URL），无用户输入进 shell；未来若加含空格/特殊字符参数需自行加引号。
+  const cmdLine = [cmd, ...cmdArgs].join(' ');
+  const r = spawnSync(cmdLine, {
+    shell: process.platform === 'win32',
     stdio: 'inherit',
     ...opts,
   });
@@ -89,7 +93,8 @@ function versionOf(cmd) {
 
 function getOut(cmd, args) {
   // 只读命令取输出（如 npm config get registry），不改状态
-  const r = spawnSync(cmd, args, {
+  // 拼单条命令行交 shell（同 run：规避 DEP0190，参数全为代码常量）
+  const r = spawnSync([cmd, ...args].join(' '), {
     encoding: 'utf-8',
     shell: process.platform === 'win32',
     stdio: ['ignore', 'pipe', 'ignore'],
