@@ -15,7 +15,7 @@
  *
  * 约定：
  *   - provider：由 BASE_URL 域名按映射表推导，未知 → "custom"
- *   - claudeNeko.present：常用目录存在即视为已装（无副作用，不启动服务）
+ *   - claudeNeko.present：仅当设置 CLAUDE_NEKO_DIR 环境变量时才探测（不内置任何本机路径）
  */
 'use strict';
 

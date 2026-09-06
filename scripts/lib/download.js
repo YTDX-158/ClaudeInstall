@@ -7,7 +7,7 @@
  * 约定：
  *   - 临时目录统一 %TEMP%\ClaudeInstall（可被雷4：不依赖 cwd）
  *   - 下载先写 .part，成功才改名（雷5：杜绝半个文件被当成功）
- *   - 目录列表解析：拉 HTML → 正则提取 → 取版本号最高（Node LTS 线动态查最新）
+ *   - 多源下载：主源失败自动切备用（v0.2.2 起 Node/Git 均固定版本，目录动态解析已移除）
  */
 'use strict';
 
@@ -50,11 +50,16 @@ function download(url, dest, { timeoutMs = 120000, redirects = 0, onProgress } =
 
     const req = https.get(url, { timeout: timeoutMs }, (res) => {
       const status = res.statusCode || 0;
-      // 跟随 30x 重定向（nodejs.org 偶发跳转到 CDN），最多 5 跳防死循环
+      // 跟随 30x 重定向（nodejs.org / npmmirror 偶发跳转到 CDN），最多 5 跳防死循环
       if (status >= 300 && status < 400 && res.headers.location) {
+        if (redirects >= 5) { res.resume(); return done(false, { error: 'too many redirects' }); }
+        // 等 302 body 读完再递归（串行跟随——直接并行发新连接会挂起不 settle）；
+        // 递归必须带 onProgress：丢了它下载后半程就黑住（npmmirror registry → CDN 必经 302）
         res.resume();
-        if (redirects >= 5) return done(false, { error: 'too many redirects' });
-        return download(res.headers.location, dest, { timeoutMs, redirects: redirects + 1 }).then(resolve);
+        res.on('end', () => {
+          download(res.headers.location, dest, { timeoutMs, redirects: redirects + 1, onProgress }).then(resolve);
+        });
+        return;
       }
       if (status !== 200) {
         res.resume();

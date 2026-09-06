@@ -170,7 +170,7 @@ async function main() {
 
   console.log('');
   console.log('┌──────────────────────────────────────────────┐');
-  console.log('│  ClaudeInstall 一键安装器 v0.2             │');
+  console.log('│  ClaudeInstall 一键安装器 v0.2.2           │');
   console.log(`│  装 Claude Code + 接入 ${prov.label}${' '.repeat(20 - prov.label.length)}│`);
   console.log('└──────────────────────────────────────────────┘');
   if (DRY_RUN) warn('干跑模式（--dry-run）：只打印要做什么，不改任何文件');

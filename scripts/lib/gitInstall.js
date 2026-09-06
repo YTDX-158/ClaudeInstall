@@ -86,7 +86,8 @@ async function ensureGit() {
       process.stdout.write(`\r  [下载中] 已接收 ${mb} MB  `);
     }
   };
-  const d = await dl.downloadFromSources(GIT_URLS, exe, { onProgress });
+  // N1：断流容忍 120s→600s（Node https timeout 是空闲超时；慢速下载不超时，仅防完全断流）
+  const d = await dl.downloadFromSources(GIT_URLS, exe, { onProgress, timeoutMs: 600000 });
   if (!d.ok) {
     process.stdout.write('\n');
     return { installed: false, action: 'failed',

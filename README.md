@@ -119,6 +119,7 @@ node scripts/install.js
 
 - 2026-09-06 **v0.2.1 安装全程可见** ✅：Node 固定 v22.20.0（curl 实时进度 + 双源）+ Node/Git 装改 `/qb` `/SILENT` 进度小窗 + Git 下载 `[下载中 x/y MB (pct%)]` 实时刷新 + 阶段中文预告（commit e3bab20）
 - 2026-09-06 **v0.2.2 安全加固 + 瘦身** ✅：装前 **Authenticode 验签**（Node 红停 / Git 黄警降级）+ key 白名单校验（iss 手写循环 + install.js，防 cmd 注入/粘贴带杂质）+ npm 安装 600s 超时提示 + bat 下载前清半截残留 + 删 download.js 死代码 + 删 detect.js 硬编码开发者路径 + 文档同步
+- 2026-09-06 **v0.2.2-fix** ✅：修复 download 302 重定向**挂起**（registry→CDN 改串行跟随 + 递归带进度回调，302 实测下载通过、进度不丢）+ Git 下载断流容忍 120s→600s + banner 版本对齐 + 过时注释清理
 
 ## 下一步
 
