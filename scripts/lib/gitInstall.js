@@ -44,7 +44,8 @@ function hasGit() {
 function installSilent(exePath) {
   const ps =
     `Start-Process -FilePath '${exePath}' -Verb RunAs ` +
-    `-ArgumentList '/VERYSILENT','/NORESTART','/NOCANCEL','/SP-' -Wait`;
+    // /SILENT（而非 /VERYSILENT）：显示安装进度小窗，用户能看见"正在装"而不是黑窗干等
+    `-ArgumentList '/SILENT','/NORESTART','/NOCANCEL','/SP-' -Wait`;
   const r = spawnSync('powershell',
     ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps],
     { encoding: 'utf-8', shell: false, timeout: 300000 });
@@ -58,11 +59,28 @@ async function ensureGit() {
   if (hasGit()) return { installed: true, action: 'skipped' };
 
   const exe = path.join(dl.ensureTemp(), GIT_FILE);
-  const d = await dl.downloadFromSources(GIT_URLS, exe, { label: 'Git' });
+  // 下载进度：\r 覆盖同一行（节流 300ms），有 content-length 时显示百分比 —— 不再"黑窗干等"
+  let lastTick = 0;
+  const onProgress = ({ received, total }) => {
+    const now = Date.now();
+    if (now - lastTick < 300) return;
+    lastTick = now;
+    const mb = (received / 1048576).toFixed(1);
+    if (total > 0) {
+      const pct = Math.min(100, (received / total) * 100).toFixed(0);
+      process.stdout.write(`\r  [下载中] ${mb} MB / ${(total / 1048576).toFixed(1)} MB（${pct}%）  `);
+    } else {
+      process.stdout.write(`\r  [下载中] 已接收 ${mb} MB  `);
+    }
+  };
+  const d = await dl.downloadFromSources(GIT_URLS, exe, { onProgress });
   if (!d.ok) {
+    process.stdout.write('\n');
     return { installed: false, action: 'failed',
       error: `Git 下载失败（${d.error}）。可手动到 https://git-scm.com 下载安装，装好后重跑本安装器即可跳过。` };
   }
+  process.stdout.write(`\r  [下载完成] ${(d.size / 1048576).toFixed(1)} MB\n`);
+  console.log('  [提示] 正在安装 Git —— 屏幕会出现安装进度小窗，装完自动关闭，请稍候…');
 
   const installed = installSilent(exe);
   if (installed && hasGit()) {

@@ -200,8 +200,8 @@ async function main() {
   if (DRY_RUN) {
     info('[dry-run] 将检测 Git，缺失则下载并静默安装（会弹一次授权窗口）');
   } else if (!gitOk) {
-    ok('未检测到 Git，正在自动下载安装…');
-    warn('⚠️  即将弹出「用户账户控制」授权窗口，请点「是」（不点会等较久）');
+    ok('未检测到 Git，开始下载 Git 安装包（约 50MB，下载有实时进度）…');
+    info('下载完会自动弹出「用户账户控制」授权窗口，请点「是」；随后会出现安装进度小窗。');
     const g = await gitInstall.ensureGit();
     if (g.action === 'skipped') ok('Git 已就绪');
     else if (g.action === 'installed') ok('Git 安装完成');

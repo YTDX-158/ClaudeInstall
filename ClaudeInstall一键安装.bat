@@ -107,33 +107,52 @@ pause >nul
 exit /b 0
 
 rem ================= subroutine: auto-install Node.js =================
+rem     v0.2.1: fixed version (npmmirror + nodejs.org both HEAD 200),
+rem     download via system curl.exe with live progress bar (PS fallback if no curl),
+rem     install with msiexec /qb (shows progress window instead of black screen)
 :install_node
 set "TMP_DIR=%TEMP%\ClaudeInstall"
 if not exist "%TMP_DIR%" mkdir "%TMP_DIR%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$ErrorActionPreference='Stop';" ^
-  "$dir=Join-Path $env:TEMP 'ClaudeInstall';" ^
-  "if(-not (Test-Path $dir)){New-Item -ItemType Directory -Path $dir | Out-Null};" ^
-  "$dest=Join-Path $dir 'node.msi';" ^
-  "$sources=@('https://registry.npmmirror.com/-/binary/node/latest-v22.x/','https://nodejs.org/dist/latest-v22.x/');" ^
-  "$file=$null;" ^
-  "foreach($src in $sources){" ^
-  "  try{" ^
-  "    Write-Host ('  [download] check version: '+$src);" ^
-  "    $html=(Invoke-WebRequest -Uri $src -UseBasicParsing -TimeoutSec 30).Content;" ^
-  "    $m=[regex]::Matches($html,'node-v(\d+\.\d+\.\d+)-x64\.msi');" ^
-  "    if($m.Count -eq 0){continue};" ^
-  "    $best=($m | ForEach-Object { $_.Groups[1].Value } | Sort-Object { [version]$_ } -Descending)[0];" ^
-  "    $file='node-v'+$best+'-x64.msi';" ^
-  "    Write-Host ('  [download] '+$file);" ^
-  "    Invoke-WebRequest -Uri ($src+$file) -OutFile $dest -UseBasicParsing -TimeoutSec 600;" ^
-  "    Write-Host '  [download] done';" ^
-  "    break;" ^
-  "  } catch { Write-Host ('  [download] source failed: '+$_.Exception.Message); }" ^
-  "}" ^
-  "if(-not $file -or -not (Test-Path $dest)){ Write-Host 'ERROR: cannot download Node'; exit 1 };" ^
-  "Write-Host '  An authorization window will pop up - click Yes to install Node.js';" ^
-  "Start-Process msiexec -ArgumentList ('/i \"'+$dest+'\" /qn /norestart') -Verb RunAs -Wait;" ^
-  "$nodeExe=Join-Path $env:ProgramFiles 'nodejs\node.exe';" ^
-  "if(Test-Path $nodeExe){ Write-Host '  Node.js installed'; exit 0 } else { Write-Host 'ERROR: node.exe not found after install'; exit 1 }"
-exit /b %errorlevel%
+set "DEST=%TMP_DIR%\node.msi"
+set "NODE_URL1=https://registry.npmmirror.com/-/binary/node/v22.20.0/node-v22.20.0-x64.msi"
+set "NODE_URL2=https://nodejs.org/dist/v22.20.0/node-v22.20.0-x64.msi"
+where curl >nul 2>nul
+if errorlevel 1 goto :node_dl_powershell
+echo  [1/3] Downloading Node.js v22.20.0 (about 30MB)...
+echo  Progress bar below - wait for it to finish (mirror source):
+curl.exe -fL --connect-timeout 20 --retry 3 --retry-delay 2 -o "%DEST%" "%NODE_URL1%"
+if not errorlevel 1 goto :node_downloaded
+echo  [1/3] Mirror failed, trying official nodejs.org...
+curl.exe -fL --connect-timeout 20 --retry 3 --retry-delay 2 -o "%DEST%" "%NODE_URL2%"
+if not errorlevel 1 goto :node_downloaded
+echo.
+echo  [X] Node.js download failed from both sources.
+echo      Install manually: China mirror https://npmmirror.com/mirrors/node/
+echo      Official: https://nodejs.org  then re-run this installer.
+exit /b 1
+
+:node_dl_powershell
+echo  [1/3] curl not found, downloading Node.js via PowerShell...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $d=Join-Path $env:TEMP 'ClaudeInstall'; if(-not (Test-Path $d)){New-Item -ItemType Directory -Path $d | Out-Null}; try { Invoke-WebRequest -Uri 'https://registry.npmmirror.com/-/binary/node/v22.20.0/node-v22.20.0-x64.msi' -OutFile (Join-Path $d 'node.msi') -UseBasicParsing -TimeoutSec 600 } catch { Write-Host ('  mirror failed: '+$_.Exception.Message); exit 1 }"
+if errorlevel 1 exit /b 1
+
+:node_downloaded
+if not exist "%DEST%" goto :node_dl_missing
+echo  [2/3] Node.js downloaded. Installing - a small progress window may appear:
+msiexec /i "%DEST%" /qb /norestart /l*v "%TMP_DIR%\node_install.log"
+if errorlevel 1 goto :node_install_failed_sub
+if exist "%ProgramFiles%\nodejs\node.exe" goto :node_ok
+echo  [X] node.exe not found after install.
+exit /b 1
+
+:node_ok
+echo  [3/3] Node.js v22.20.0 installed.
+exit /b 0
+
+:node_dl_missing
+echo  [X] Downloaded file is missing. Install Node.js manually then re-run.
+exit /b 1
+
+:node_install_failed_sub
+echo  [X] Node.js install did not complete. Install manually: https://npmmirror.com/mirrors/node/
+exit /b 1

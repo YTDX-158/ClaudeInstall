@@ -24,7 +24,7 @@ function ensureTemp() {
 }
 
 // ---------- 单 URL 下载（返回 Promise<{ok,size,error?,status?}>）----------
-function download(url, dest, { timeoutMs = 120000, redirects = 0 } = {}) {
+function download(url, dest, { timeoutMs = 120000, redirects = 0, onProgress } = {}) {
   return new Promise((resolve) => {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     const tmp = dest + '.part';
@@ -61,7 +61,11 @@ function download(url, dest, { timeoutMs = 120000, redirects = 0 } = {}) {
         return done(false, { status, error: 'HTTP ' + status });
       }
       total = parseInt(res.headers['content-length'] || '0', 10) || 0;
-      res.on('data', (c) => { received += c.length; });
+      res.on('data', (c) => {
+        received += c.length;
+        // 进度回调（节流/打印交给调用方）—— 安装器实时显示"下到多少"用的
+        onProgress?.({ received, total });
+      });
       const ws = fs.createWriteStream(tmp);
       ws.on('error', (e) => {
         // 写盘失败（磁盘满/权限/占用）→ 走失败路径清理 .part，不抛未捕获异常（雷13）
