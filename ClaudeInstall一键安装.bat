@@ -116,6 +116,8 @@ if not exist "%TMP_DIR%" mkdir "%TMP_DIR%"
 set "DEST=%TMP_DIR%\node.msi"
 set "NODE_URL1=https://registry.npmmirror.com/-/binary/node/v22.20.0/node-v22.20.0-x64.msi"
 set "NODE_URL2=https://nodejs.org/dist/v22.20.0/node-v22.20.0-x64.msi"
+rem  clear any half-downloaded file from a previous interrupted run
+if exist "%DEST%" del "%DEST%" 2>nul
 where curl >nul 2>nul
 if errorlevel 1 goto :node_dl_powershell
 echo  [1/3] Downloading Node.js v22.20.0 (about 30MB)...
@@ -138,11 +140,21 @@ if errorlevel 1 exit /b 1
 
 :node_downloaded
 if not exist "%DEST%" goto :node_dl_missing
-echo  [2/3] Node.js downloaded. Installing - a small progress window may appear:
+echo  [2/3] Verifying Node.js installer signature...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=Get-AuthenticodeSignature -LiteralPath '%DEST%'; if($s.Status -eq 'Valid'){exit 0}else{Write-Host ('  signature status: '+$s.Status); exit 1}"
+if errorlevel 1 goto :node_sign_bad
+echo  [2/3] Signature OK. Installing - a small progress window may appear:
 msiexec /i "%DEST%" /qb /norestart /l*v "%TMP_DIR%\node_install.log"
 if errorlevel 1 goto :node_install_failed_sub
 if exist "%ProgramFiles%\nodejs\node.exe" goto :node_ok
 echo  [X] node.exe not found after install.
+exit /b 1
+
+:node_sign_bad
+echo.
+echo  [X] Node.js installer signature is NOT valid.
+echo      The downloaded file may have been tampered with.
+echo      Install manually: https://nodejs.org  or  https://npmmirror.com/mirrors/node/
 exit /b 1
 
 :node_ok

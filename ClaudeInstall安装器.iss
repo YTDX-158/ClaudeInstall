@@ -6,7 +6,7 @@
 ; =====================================================
 
 #define AppName "ClaudeInstall"
-#define AppVersion "0.2"
+#define AppVersion "0.2.2"
 #define AppExeName "ClaudeInstall一键安装.bat"
 #define BatchCmd "ClaudeInstall一键安装.bat"
 
@@ -55,15 +55,38 @@ begin
   KeyPage.Values[0] := '';
 end;
 
-// 校验：空 key 不给过（防止一路点下一步白装）
+// R2a：key 白名单校验——只许字母数字 + 下划线/点/连字符（Inno Pascal 无正则，手写字符循环）。
+// 拦掉空格/引号/& | < > 等 cmd 危险字符（防命令行注入 + 防粘贴带多余内容）；宽容不强制 sk- 前缀
+function KeyHasBadChars(const S: String): Boolean;
+var
+  i: Integer;
+  ch: Char;
+begin
+  Result := False;
+  for i := 1 to Length(S) do begin
+    ch := S[i];
+    if not (((ch >= 'a') and (ch <= 'z')) or ((ch >= 'A') and (ch <= 'Z')) or
+            ((ch >= '0') and (ch <= '9')) or (ch = '_') or (ch = '.') or (ch = '-')) then begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+// 校验：空 key 不给过；含非法字符不给过（防止一路点下一步白装 / key 被截断 / cmd 注入）
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
-  if CurPageID = KeyPage.ID then
+  if CurPageID = KeyPage.ID then begin
     if Trim(KeyPage.Values[0]) = '' then begin
       MsgBox('请先粘贴你的 DeepSeek API Key（在输入框里 Ctrl+V）。', mbError, MB_OK);
       Result := False;
+    end else if KeyHasBadChars(KeyPage.Values[0]) then begin
+      MsgBox('Key 里含有不支持的字符（空格、引号或 & | < > 等）。' + #13#10 +
+             '请只粘贴 Key 本身（形如 sk-xxxx…），不要带多余空格或文字。', mbError, MB_OK);
+      Result := False;
     end;
+  end;
 end;
 
 // 安装完成后：调 bat 执行真实安装（下载 Node/Git、npm 装 claude、写配置）

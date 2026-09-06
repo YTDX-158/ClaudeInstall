@@ -95,42 +95,5 @@ async function downloadFromSources(urls, dest, opts = {}) {
   return { ok: false, error: lastErr, sources: urls };
 }
 
-// ---------- 目录列表解析：取版本号最高的一条 ----------
-// 例：listingUrl = .../node/latest-v22.x/，regex = /node-v(\d+\.\d+\.\d+)-x64\.msi/
-// 返回完整文件名（如 node-v22.23.2-x64.msi）；失败返回 null
-function getLatestFromListing(listingUrl, regex, { timeoutMs = 30000 } = {}) {
-  return new Promise((resolve) => {
-    let text = '';
-    const req = https.get(listingUrl, { timeout: timeoutMs }, (res) => {
-      if ((res.statusCode || 0) !== 200) { res.resume(); return resolve(null); }
-      res.setEncoding('utf-8');
-      res.on('data', (c) => { text += c; });
-      res.on('end', () => {
-        const found = [];
-        let m;
-        const re = new RegExp(regex.source, 'g');
-        while ((m = re.exec(text)) !== null) {
-          if (!found.includes(m[0])) found.push(m[0]);
-        }
-        if (found.length === 0) return resolve(null);
-        const pick = found.sort((a, b) => {
-          const va = extractVersion(a), vb = extractVersion(b);
-          for (let i = 0; i < 3; i++) {
-            if ((va[i] || 0) !== (vb[i] || 0)) return (va[i] || 0) - (vb[i] || 0);
-          }
-          return 0;
-        }).pop();
-        resolve(pick);
-      });
-    });
-    req.on('error', () => resolve(null));
-    req.on('timeout', () => { req.destroy(); resolve(null); });
-  });
-}
-
-function extractVersion(name) {
-  const m = name.match(/(\d+)\.(\d+)\.(\d+)/);
-  return m ? [parseInt(m[1], 10), parseInt(m[2], 10), parseInt(m[3], 10)] : [0, 0, 0];
-}
-
-module.exports = { TEMP_DIR, ensureTemp, download, downloadFromSources, getLatestFromListing };
+// v0.2.2：getLatestFromListing / extractVersion 已删——Node 改固定版本后目录列表动态解析成死代码
+module.exports = { TEMP_DIR, ensureTemp, download, downloadFromSources };

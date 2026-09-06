@@ -53,6 +53,19 @@ function installSilent(exePath) {
   return r.status === 0;
 }
 
+// ---------- 签名验证（R1 安全加固）----------
+// 装前验 Authenticode 签名：签名有效才装。Git 走黄警降级——签名是个人证书，
+// 链不稳/本机缺证书时由调用方提示手动装兜底，不红停阻塞主流程。
+function verifySignature(exePath) {
+  const ps =
+    `$s=Get-AuthenticodeSignature -LiteralPath '${exePath}'; ` +
+    `if($s.Status -eq 'Valid'){exit 0}else{Write-Host ('  signature status: '+$s.Status); exit 1}`;
+  const r = spawnSync('powershell',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps],
+    { encoding: 'utf-8', shell: false, timeout: 30000 });
+  return r.status === 0;
+}
+
 // ---------- 主入口 ----------
 // 返回 { installed:boolean, action:'skipped'|'installed'|'failed', error? }
 async function ensureGit() {
@@ -80,7 +93,12 @@ async function ensureGit() {
       error: `Git 下载失败（${d.error}）。可手动到 https://git-scm.com 下载安装，装好后重跑本安装器即可跳过。` };
   }
   process.stdout.write(`\r  [下载完成] ${(d.size / 1048576).toFixed(1)} MB\n`);
-  console.log('  [提示] 正在安装 Git —— 屏幕会出现安装进度小窗，装完自动关闭，请稍候…');
+  // R1b：Git 验签（黄警降级——签名无效则提示手动装，不装、不阻塞主体）
+  if (!verifySignature(exe)) {
+    return { installed: false, action: 'failed',
+      error: 'Git 安装包签名验证未通过（可能下载被篡改，或本机证书缺失）。请手动到 https://git-scm.com 下载安装，装好后重跑即可跳过。' };
+  }
+  console.log('  [提示] 签名验证通过，正在安装 Git —— 屏幕会出现安装进度小窗，装完自动关闭，请稍候…');
 
   const installed = installSilent(exe);
   if (installed && hasGit()) {

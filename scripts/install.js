@@ -71,11 +71,15 @@ function run(cmd, cmdArgs, opts = {}) {
     info(`[dry-run] 将执行: ${cmd} ${cmdArgs.join(' ')}`);
     return { status: 0 };
   }
-  return spawnSync(cmd, cmdArgs, {
+  const r = spawnSync(cmd, cmdArgs, {
     shell: process.platform === 'win32', // Windows 下 npm 等是 .cmd，需要 shell
     stdio: 'inherit',
     ...opts,
   });
+  // L3：超时转译——Windows 下 .cmd 超时只杀顶层，npm 的子 node 可能残留继续装；
+  // 返回 timedout 标记，调用方提示"可能已装好，重跑会自动跳过"（幂等兜底）
+  if (r.error && r.error.code === 'ETIMEDOUT') return { status: -1, timedout: true };
+  return { status: r.status };
 }
 
 function versionOf(cmd) {
@@ -150,6 +154,11 @@ async function askKeyWithConfirm() {
 }
 
 // readJson / writeJson 已抽到 lib/config.js（接口 A，合并写入 + 备份）
+
+/** R2b：key 白名单校验（宽容：字母数字 + 下划线/点/连字符；禁空格/引号/& | < > 等 cmd 危险字符；不强制前缀） */
+function isValidKey(k) {
+  return typeof k === 'string' && k.length > 0 && k.length <= 300 && /^[A-Za-z0-9_.-]+$/.test(k);
+}
 
 // ---------- 主流程 ----------
 async function main() {
@@ -234,10 +243,12 @@ async function main() {
   } else if (SKIP_INSTALL) {
     info('--skip-install：跳过安装（用于测试）');
   } else {
-    info('正在通过 npm 安装 Claude Code（最新稳定版）…');
-    const r = run('npm', ['install', '-g', '@anthropic-ai/claude-code']);
+    info('正在通过 npm 安装 Claude Code（最新稳定版，约 1-3 分钟）…');
+    const r = run('npm', ['install', '-g', '@anthropic-ai/claude-code'], { timeout: 600000 });
     if (r.status !== 0) {
-      err('Claude Code 安装失败，请检查网络后重试');
+      err(r.timedout
+        ? 'Claude Code 安装超时（网络太慢）。可稍后重跑本安装器——若其实已装好，重跑会自动跳过。'
+        : 'Claude Code 安装失败，请检查网络后重试');
       process.exitCode = 1;
       return;
     }
@@ -257,6 +268,13 @@ async function main() {
   }
   if (!key || key === '<your-key>') {
     err('未提供 API Key，无法继续。用 --key sk-xxx 传入，或在提示时粘贴。');
+    process.exitCode = 1;
+    return;
+  }
+  // R2b：key 格式校验（防粘贴带多余字符 + 防 cmd 注入；宽容白名单，不强制前缀）
+  if (!isValidKey(key)) {
+    err('API Key 格式不正确：只能含字母/数字/下划线/点/连字符，不能有空格、引号或 & | < > 等字符。');
+    err('请复制完整 key（形如 sk-xxxx…）后重试，或用 --key 传入。');
     process.exitCode = 1;
     return;
   }

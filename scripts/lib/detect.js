@@ -70,18 +70,12 @@ function detectProvider(baseUrl) {
 }
 
 // ---------- ClaudeNeko 检测 ----------
-// 常用目录存在即视为已装（无副作用，不启动服务）；可被环境变量覆盖
-const NEKO_PATHS = [
-  path.join('D:', 'Claude_Files', '002_项目', 'ClaudeNeko'),
-];
-
+// v0.2.2（D2）：不再内置开发者本机路径（分发给小白永远 false 且暴露目录痕迹），
+// 只认环境变量 CLAUDE_NEKO_DIR（设置了才探测）；ClaudeNeko 侧 /api/env 是独立实现，不受影响
 function detectNeko() {
   const extra = process.env.CLAUDE_NEKO_DIR;
-  const candidates = extra ? [extra] : NEKO_PATHS;
-  for (const p of candidates) {
-    if (fs.existsSync(p)) return { present: true, path: p };
-  }
-  return { present: false, path: null };
+  if (!extra) return { present: false, path: null };
+  return fs.existsSync(extra) ? { present: true, path: extra } : { present: false, path: null };
 }
 
 // ---------- Env Report ----------

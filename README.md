@@ -1,4 +1,4 @@
-# ClaudeInstall 一键安装器 v0.2
+# ClaudeInstall 一键安装器 v0.2.2
 
 给国内小白的一键安装器：**自动装 Node + Git + Claude Code → 填一个 key → 直接能用**。
 不弹登录、不用手改任何配置文件。
@@ -39,6 +39,8 @@ node scripts/install.js
 3. 通过 npm 安装 **Claude Code**，并把你的 API Key 写入本地配置文件
 
 **安装过程中会弹 1~2 次授权窗口（UAC）**，那是 Windows 在问"允许安装软件吗"，点「是」即可。
+
+**下载的安装包会先验数字签名**：Node / Git 下载完成后、安装前会校验签名（确认来源没被篡改）。若提示"签名不通过"（极少见，通常是精简系统缺证书），请手动去官网下载安装。
 
 **杀毒软件可能提示**：本安装器会自动下载并执行安装程序，行为与常见软件安装器一致。若被杀软拦截，请选择"允许/信任"，或先手动装好 Node 和 Git 再运行本安装器。
 
@@ -104,8 +106,8 @@ node scripts/install.js
 
 | 组件 | 策略 |
 |---|---|
-| Node.js | 检测 → 已装够用跳过；缺 → 自动下载 LTS 静默装（主源 npmmirror，备源 nodejs.org） |
-| Git | 检测 → 已装跳过；缺 → 自动下载固定稳定版静默装（npmmirror，失败黄警不阻塞） |
+| Node.js | 检测 → 已装够用跳过；缺 → 自动下载**固定 v22.20.0**（curl 实时进度；主源 npmmirror / 备源 nodejs.org），**装前验签名**（无效即拒装），`/qb` 进度小窗安装 |
+| Git | 检测 → 已装跳过；缺 → 自动下载固定 2.46.0（实时进度；npmmirror），**装前验签名**（个人证书签名，失败黄警提示手动装、不阻塞） |
 | Claude Code | npm 装最新稳定版 |
 
 ## 测试记录
@@ -114,6 +116,9 @@ node scripts/install.js
 - 2026-09-01 v0.2：实现完成 · 语法全过 ✅ · dry-run 全流程 ✅ · 接口B detect-json ✅ · 隔离目录写配置+`.bak` ✅ · 本机 Git 检测 skipped ✅；**虚拟机真机验证（待做）**
 - 2026-09-05：全面改名 ClaudeNeko→**ClaudeInstall**（banner/bat/README/说明全改，接口契约与 ClaudeNeko 检测保留）✅ · **排雷三轮**：①修雷1 bat 管理员提权、雷2 findClaude() 防 PATH 未刷新误报、雷3 Git UAC 预告+超时缩短、雷4 README 覆盖说明、雷5 download 重定向上限、雷6 askKey 空输入退出；②修雷11 提权重启透传参数、雷17 Node 刚装完 PATH 未刷新致 install.js 误判缺 Node（execPath 兜底+bat PATH 注入双保险）、雷13 download 写流错误监听；③修雷18 verify 参数中文/引号经 cmd 破坏（改 `-p hi` 单 token）、雷19 老 Node(<18) 装上跑不动（bat 自动升级+install.js 拦截，PowerShell 判版本避开 cmd ^ 转义坑）；雷7~10/12/14/15/20 记入 `排雷记录_2026-09-05.txt` 待 M3 对照 ✅
 - 2026-09-05 **M2 打 exe** ✅：`ClaudeInstall安装器.iss` 全中文向导（欢迎→填 key→安装→完成），编译产物 `dist_installer\ClaudeInstall安装器_v0.2.exe`（admin 一次 UAC，收 key → 调 bat --silent 完成真实安装）· **雷21（重大）**：bat 此前从未真实跑过——UTF-8无BOM+LF+中文+括号块 → cmd 必崩；已根治（全英文+CRLF+goto 标签化），bat silent+dry-run 实测 exit 0 ✅
+
+- 2026-09-06 **v0.2.1 安装全程可见** ✅：Node 固定 v22.20.0（curl 实时进度 + 双源）+ Node/Git 装改 `/qb` `/SILENT` 进度小窗 + Git 下载 `[下载中 x/y MB (pct%)]` 实时刷新 + 阶段中文预告（commit e3bab20）
+- 2026-09-06 **v0.2.2 安全加固 + 瘦身** ✅：装前 **Authenticode 验签**（Node 红停 / Git 黄警降级）+ key 白名单校验（iss 手写循环 + install.js，防 cmd 注入/粘贴带杂质）+ npm 安装 600s 超时提示 + bat 下载前清半截残留 + 删 download.js 死代码 + 删 detect.js 硬编码开发者路径 + 文档同步
 
 ## 下一步
 
