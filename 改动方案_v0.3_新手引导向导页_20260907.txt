@@ -1,0 +1,110 @@
+# ClaudeInstall v0.3 改动方案 · 新手引导向导页
+
+日期：2026-09-07 · 状态：方案定稿（待用户截图 + 确认后实施）
+目标版本：v0.3（在 v0.2.2 基础上加新手引导，不改安装逻辑）
+
+---
+
+## 一、要解决的问题
+小白双击 exe 走到「填 API Key」页就卡住——不知道 key 从哪来、怎么注册 DeepSeek、
+填完还要注意什么。原填 Key 页只有一行字，引导不足。
+（顺带解决：cmd 用管理员打开导致 claude 界面渲染乱 = 用户第一会踩的坑）
+
+## 二、方案总览
+在 Inno 向导「欢迎页 → 填 Key 页」之间，插入 **3 个带图新手引导页**，每页 1 张图。
+向导页可放图（MsgBox 小弹窗放不下图，所以不用弹窗，用整页）。全程不跳出安装器。
+
+新的向导顺序：
+```
+欢迎页（现有）
+  → 【页A】新手说明 · cmd 怎么开（非管理员）+ 界面乱了怎么办   ← 图A（可选）
+  → 【页B】接 DeepSeek ① 注册 + 登录 + 实名                    ← 图B
+  → 【页C】接 DeepSeek ② 充值 + 建 key + 复制（⚠️只显示一次）  ← 图C
+  → 【填 Key 页】（现有）
+  → 安装页（现有）
+  → 完成页（现有）
+```
+
+## 三、改动文件
+1. `ClaudeInstall安装器.iss` —— 主战场（加 3 页 + 打包 3 图）
+2. 新增 `dist_installer\img\` 下 3 张截图（图A/B/C，用户实机截，我打码排版）
+3. 打包产物 `dist_installer\ClaudeInstall安装器_v0.3.exe`（版本号 +1，iss 里 #define AppVersion 0.2.2 → 0.3）
+
+## 四、iss 具体改动点
+
+### 4.1 版本
+```
+#define AppVersion "0.3"
+```
+
+### 4.2 [Files] 段 —— 把 3 张图打进安装器
+图片用 `dontcopy`（不进安装目录，只在向导页用）：
+```
+Source: "dist_installer\img\guide_cmd.png";  Flags: dontcopy
+Source: "dist_installer\img\guide_register.png"; Flags: dontcopy
+Source: "dist_installer\img\guide_key.png";    Flags: dontcopy
+```
+
+### 4.3 [Code] 段 —— 建 3 个向导页（参考现有 KeyPage 写法）
+统一用 `CreateCustomPage`，页面类型选带图的（TBitmapImage 控件放图）。
+每页结构：标题 + 一行副标题 + 一张图 + 若干行要点文字。
+
+```
+PageA = CreateCustomPage(wpWelcome, '开始之前 · 先看这一页', '怎么打开 Claude');
+  → 图A（cmd 搜索框示意）
+  → 文字要点：
+     · 搜索 cmd → 右键【以非管理员身份运行】（或直接打开）
+     · 日常使用用非管理员就够：写代码/读文件/聊天全支持
+     · 别用【管理员身份】打开 Claude：界面会错位乱，且没必要
+     · 万一界面乱了 → 关掉，用非管理员重开就好
+
+PageB = CreateCustomPage(PageA.ID, '接 DeepSeek ①', '注册并登录开放平台');
+  → 图B（登录页截图）
+  → 文字要点：
+     · 浏览器打开 platform.deepseek.com
+     · 手机号或微信登录（新手机号=自动注册，无需填资料）
+     · 需实名认证（个人认证 · 传身份证 · 几分钟通过）
+     · 未实名 = 无法建 key 和充值
+
+PageC = CreateCustomPage(PageB.ID, '接 DeepSeek ②', '充值 + 拿 key');
+  → 图C（充值页 + 建key 合并示意，key 已打码）
+  → 文字要点：
+     · 左侧【充值】→ 支付宝/微信 → 先充 ¥10-20 够用很久
+     · 左侧【API keys】→【创建 API key】→ 命名随意
+     · 复制弹出的 sk- 开头的 key（⚠️只显示一次，关窗就没了）
+     · 回到安装器，下一步把它粘贴进去
+```
+
+### 4.4 现有填 Key 页文案微调
+KeyPage 副标题已有"还没有？去 platform 创建"，可改成"照着前面两页注册好，把 key 粘贴这里"
+（指向更明确）。
+
+### 4.5 完成页文案扩充（可选）
+现有完成页 MsgBox 加一行：如果界面乱了 → 用非管理员重开（和页A呼应）。
+（或保持简单，页A已讲过，此处可省略——实施时定）
+
+## 五、截图清单（用户实机截，6 张供选 3）
+登录 platform.deepseek.com（key 打码，别真充值）：
+- 图A：cmd 在开始菜单搜索结果那屏（Win 键 → 搜"cmd" → 右侧显示运行/以管理员身份运行那个列表）
+- 图B1：登录页（手机号/微信两种入口可见）
+- 图B2：登录后控制台首页（左菜单可见）
+- 图C1：充值页（金额选项 + 支付宝/微信，截到金额选择即可）
+- 图C2：API keys 页（「创建 API key」按钮可见）
+- 图C3：建 key 后的弹窗（sk- 开头那串 → 我会整段糊掉）
+
+选图规则：图A/B/C 各挑 1 张最能说明问题的；C2+C3 若都清晰，页C 可放两张小的（需实测不挤爆，否则 C 只放一张 + 文字）。
+
+## 六、验证方案（真机 + 冒烟）
+1. `ISCC.exe ClaudeInstall安装器.iss` 编译过，无 Pascal 错误
+2. 打开 exe → 确认 3 个新页依次出现、图正常显示、文字不溢出
+3. 填 Key 页仍能校验（空/坏字符拦截不回归）
+4. 走完流程能正常装（回归验证不破坏现有安装）
+5. 冒烟：CI_SMOKE=1 检查打包结构含 3 图
+6. 截图尺寸规范：宽度 ≤ 500px（向导页可容纳），过大先缩再内嵌
+
+## 七、待办顺序
+1. [用户] 截图 6 张 → 放 `D:\Claude_Files\003_资源库\临时\`
+2. [我] 打码 + 缩图到 ≤500px 宽 + 命名 guide_*.png → 放 `dist_installer\img\`
+3. [我] 改 iss（版本 + Files + Code 三处）→ 编译 v0.3 exe
+4. [我+用户] 真机验证 3 页显示 + 安装回归
+5. [我] 收尾：README/说明/记忆更新 + git commit（不 push，等指示）

@@ -6,7 +6,7 @@
 ; =====================================================
 
 #define AppName "ClaudeInstall"
-#define AppVersion "0.2.2"
+#define AppVersion "0.3"
 #define AppExeName "ClaudeInstall一键安装.bat"
 #define BatchCmd "ClaudeInstall一键安装.bat"
 
@@ -37,19 +37,81 @@ Name: "chinesesimp"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 ; 只打包运行必需：启动器 bat + 核心脚本（排除文档/排雷记录）
 Source: "{#BatchCmd}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "scripts\*"; DestDir: "{app}\scripts"; Flags: ignoreversion recursesubdirs createallsubdirs
+; v0.3 新手引导页配图（dontcopy：不进安装目录，只在向导页显示）
+Source: "assets\guide_cmd.bmp";      Flags: dontcopy
+Source: "assets\guide_register.bmp"; Flags: dontcopy
+Source: "assets\guide_key.bmp";      Flags: dontcopy
+Source: "assets\guide_claude.bmp";   Flags: dontcopy
 
 [Code]
 var
   KeyPage: TInputQueryWizardPage;
+  PageA, PageB, PageC: TWizardPage;
+  BmpA, BmpA2, BmpB, BmpC: TBitmapImage;
+  LblA, LblB, LblC: TNewStaticText;
 
-// 建"填 API Key"页（在欢迎页之后）
-procedure InitializeWizard;
+// v0.3：在自定义页上放一张引导图（新建控件，宽度撑满可用区，高 190）
+procedure SetupGuideImage(Page: TWizardPage; const FileName: String; ALeft, ATop, AWidth, AHeight: Integer; var Img: TBitmapImage);
 begin
-  KeyPage := CreateInputQueryPage(wpWelcome,
+  ExtractTemporaryFile(FileName);
+  Img := TBitmapImage.Create(Page);
+  Img.Parent := Page.Surface;
+  Img.Bitmap.LoadFromFile(ExpandConstant('{tmp}\') + FileName);
+  Img.Stretch := True;
+  Img.SetBounds(ALeft, ATop, AWidth, AHeight);
+end;
+
+// v0.3：在自定义页上放一段要点文字（新建控件，自动换行，占满图下方剩余空间）
+procedure SetupGuideText(Page: TWizardPage; const Text: String; TopPos: Integer; var Lbl: TNewStaticText);
+begin
+  Lbl := TNewStaticText.Create(Page);
+  Lbl.Parent := Page.Surface;
+  Lbl.Caption := Text;
+  Lbl.AutoSize := False;
+  Lbl.WordWrap := True;
+  Lbl.SetBounds(0, TopPos, Page.Surface.Width, Page.Surface.Height - TopPos);
+end;
+
+// 建 v0.3 三个新手引导页 + "填 API Key"页
+procedure InitializeWizard;
+var
+  W: Integer;
+begin
+  // 【页A】怎么打开 Claude（普通权限，非管理员）：cmd 搜索 + 输入 claude 并排
+  PageA := CreateCustomPage(wpWelcome, '开始之前 · 先看这一页', '怎么打开 Claude');
+  W := PageA.Surface.Width;
+  SetupGuideImage(PageA, 'guide_cmd.bmp', (W - 800) div 2, 8, 400, 200, BmpA);
+  SetupGuideImage(PageA, 'guide_claude.bmp', (W - 800) div 2 + 400, 8, 400, 200, BmpA2);
+  SetupGuideText(PageA,
+    '· 按 Win 键 → 搜索 cmd → 直接打开（普通权限即可）' + #13#10 +
+    '· 在 cmd 输入 claude 并回车' + #13#10 +
+    '· 别用「以管理员身份运行」打开 Claude——界面会错位乱' + #13#10 +
+    '· 万一界面乱了 → 关掉，用普通方式重开就好', 222, LblA);
+
+  // 【页B】接 DeepSeek ①：注册 + 登录 + 实名
+  PageB := CreateCustomPage(PageA.ID, '接 DeepSeek ①', '注册并登录开放平台');
+  W := PageB.Surface.Width;
+  SetupGuideImage(PageB, 'guide_register.bmp', (W - 460) div 2, 8, 460, 325, BmpB);
+  SetupGuideText(PageB,
+    '· 浏览器打开 platform.deepseek.com' + #13#10 +
+    '· 手机号或微信登录（新号=自动注册，无需填资料）' + #13#10 +
+    '· 需实名认证（传身份证 · 几分钟通过）', 347, LblB);
+
+  // 【页C】接 DeepSeek ②：充值 + 建 key
+  PageC := CreateCustomPage(PageB.ID, '接 DeepSeek ②', '充值 + 拿 Key');
+  W := PageC.Surface.Width;
+  SetupGuideImage(PageC, 'guide_key.bmp', (W - 460) div 2, 8, 460, 325, BmpC);
+  SetupGuideText(PageC,
+    '· 「充值」→ 支付宝/微信 → 先充 ¥10-20，够用很久' + #13#10 +
+    '· 「API keys」→「创建 API key」→ 名字随意' + #13#10 +
+    '· 复制 sk- 开头的 Key（⚠ 只显示一次，关窗即失）', 347, LblC);
+
+  // 填 Key 页（接在页C之后）
+  KeyPage := CreateInputQueryPage(PageC.ID,
     'DeepSeek API Key',
-    '请粘贴你的 DeepSeek API Key',
+    '照着前面两页注册好，把 Key 粘贴这里',
     'Key 只用于写入本地配置（~/.claude/settings.json），不会上传。' + #13#10 +
-    '还没有？去 platform.deepseek.com 创建（Key 只显示一次，记得复制）。' + #13#10 +
+    'Key 只显示一次，如果忘了可以回 platform 重新创建一个。' + #13#10 +
     '提示：粘贴时按 Ctrl+V，或用右键粘贴。');
   KeyPage.Add('API Key：', False);
   KeyPage.Values[0] := '';
