@@ -6,7 +6,7 @@
 ; =====================================================
 
 #define AppName "ClaudeInstall"
-#define AppVersion "0.4"
+#define AppVersion "0.4.1"
 #define AppExeName "ClaudeInstall一键安装.bat"
 #define BatchCmd "ClaudeInstall一键安装.bat"
 
@@ -50,6 +50,7 @@ var
   BmpA, BmpA2, BmpB, BmpC: TBitmapImage;
   LblA, LblB, LblC: TNewStaticText;
   NekoBtn: TNewButton;
+  NekoTip: TNewStaticText;
 
 // v0.3：在自定义页上放一张引导图（新建控件，宽度撑满可用区，高 190）
 procedure SetupGuideImage(Page: TWizardPage; const FileName: String; ALeft, ATop, AWidth, AHeight: Integer; var Img: TBitmapImage);
@@ -78,7 +79,7 @@ procedure OpenNekoPage(Sender: TObject);
 var
   ResultCode: Integer;
 begin
-  ShellExec('open', 'https://github.com/YTDX-158/ClaudeNeko/releases',
+  ShellExec('open', 'https://wwbkn.lanzoum.com/b01giav0pi',
             '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;
 
@@ -136,6 +137,13 @@ begin
   NekoBtn.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + 14;
   NekoBtn.Width := WizardForm.FinishedPage.ClientWidth - NekoBtn.Left - 20;
   NekoBtn.OnClick := @OpenNekoPage;
+
+  // 网盘下载密码提示（按钮下方一行小字）
+  NekoTip := TNewStaticText.Create(WizardForm.FinishedPage);
+  NekoTip.Parent := WizardForm.FinishedPage;
+  NekoTip.Caption := '下载密码：YTDX666';
+  NekoTip.Left := NekoBtn.Left + 4;
+  NekoTip.Top := NekoBtn.Top + NekoBtn.Height + 6;
 end;
 
 // R2a：key 白名单校验——只许字母数字 + 下划线/点/连字符（Inno Pascal 无正则，手写字符循环）。
@@ -161,6 +169,8 @@ function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
   if CurPageID = KeyPage.ID then begin
+    // 冒烟测试模式（CI_SMOKE=1）跳过 key 校验——方便自动化验证向导全流程
+    if GetEnv('CI_SMOKE') = '1' then Exit;
     if Trim(KeyPage.Values[0]) = '' then begin
       MsgBox('请先粘贴你的 DeepSeek API Key（在输入框里 Ctrl+V）。', mbError, MB_OK);
       Result := False;
