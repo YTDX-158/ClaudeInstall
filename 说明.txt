@@ -16,7 +16,8 @@ v0.2 新增（9-01）：
     已根治：全英文 + CRLF + goto 标签化（去括号块）；实测 exit 0
 9-06 v0.2.1（安装全程可见）：Node 固定 v22.20.0 + curl 实时进度下载 + Node/Git 装改 /qb /SILENT 进度小窗 + Git 下载进度实时刷新 + 阶段中文预告（commit e3bab20）
 9-06 v0.2.2（安全+瘦身）：装前 Authenticode 验签（Node 红停 / Git 黄警降级）+ key 白名单校验（iss 手写循环 + install.js，防 cmd 注入/粘贴带杂质）+ npm 600s 超时提示 + bat 下载前清半截残留 + 删 download.js 死代码 + 删 detect.js 硬编码开发者路径
+9-10 v0.3（新手引导）：向导「欢迎页」后加 3 页带图引导——① 怎么开 cmd 装 Claude ② 怎么注册 DeepSeek ③ 怎么充值拿 key；小白照着图走即可
 
-用法：双击 `ClaudeInstall安装器_v0.2.2.exe`（小白）；或 `ClaudeInstall一键安装.bat`（英文终端版）
+用法：双击 `ClaudeInstall安装器_v0.3.exe`（小白）；或 `ClaudeInstall一键安装.bat`（英文终端版）
 依赖：Node.js（缺失自动下载安装）
-最近更新：2026-09-06（v0.2.2 安全加固+瘦身完成；剩 exe 手动 UAC 验证 → M3 真机）
+最近更新：2026-09-10（v0.3 新手引导向导页完成）

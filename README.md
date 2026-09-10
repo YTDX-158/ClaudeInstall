@@ -1,4 +1,4 @@
-# ClaudeInstall 一键安装器 v0.2.2
+# ClaudeInstall 一键安装器 v0.3
 
 给国内小白的一键安装器：**自动装 Node + Git + Claude Code → 填一个 key → 直接能用**。
 不弹登录、不用手改任何配置文件。
@@ -120,10 +120,11 @@ node scripts/install.js
 - 2026-09-06 **v0.2.1 安装全程可见** ✅：Node 固定 v22.20.0（curl 实时进度 + 双源）+ Node/Git 装改 `/qb` `/SILENT` 进度小窗 + Git 下载 `[下载中 x/y MB (pct%)]` 实时刷新 + 阶段中文预告（commit e3bab20）
 - 2026-09-06 **v0.2.2 安全加固 + 瘦身** ✅：装前 **Authenticode 验签**（Node 红停 / Git 黄警降级）+ key 白名单校验（iss 手写循环 + install.js，防 cmd 注入/粘贴带杂质）+ npm 安装 600s 超时提示 + bat 下载前清半截残留 + 删 download.js 死代码 + 删 detect.js 硬编码开发者路径 + 文档同步
 - 2026-09-06 **v0.2.2-fix** ✅：修复 download 302 重定向**挂起**（registry→CDN 改串行跟随 + 递归带进度回调，302 实测下载通过、进度不丢）+ Git 下载断流容忍 120s→600s + banner 版本对齐 + 过时注释清理
+- 2026-09-10 **v0.3 新手引导向导页** ✅：欢迎页后插 3 页带图引导（页A cmd 引导·双图并排 / 页B DeepSeek 注册 / 页C 充值+拿key），配图 4 张 BMP 放 `assets/`（Inno `TBitmapImage` 只吃 BMP 不吃 PNG）；填 Key 页副标题改为指向前两页（commit cace0cb）
 
 ## 下一步
 
-1. **exe 手动 UAC 验证**（双击 `ClaudeInstall安装器_v0.2.exe` → 点「是」→ 走完向导）
-2. 虚拟机真机验证 v0.2（干净机器全流程：Node/Git 自动装、UAC 预告、配置写对账户）
+1. **exe 手动 UAC 验证**（双击 `ClaudeInstall安装器_v0.3.exe` → 点「是」→ 走完向导，确认 3 页引导显示）
+2. 虚拟机真机验证（干净机器全流程：Node/Git 自动装、UAC 预告、配置写对账户）
 3. 多中转服务商选项
 4. GitHub Release + 网盘分发
