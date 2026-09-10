@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ClaudeInstall 一键安装器 · 核心脚本 v0.2.2
+ * ClaudeInstall 一键安装器 · 核心脚本 v0.4.2
  * =====================================
  * 目标：把「装 Claude Code + 接 DeepSeek」压成一条命令。
  *   检测 Node → 设国内 npm 镜像 → 装 claude-code → 填 key → 自动写配置（跳过登录）→ 验证
@@ -84,11 +84,6 @@ function run(cmd, cmdArgs, opts = {}) {
   // 返回 timedout 标记，调用方提示"可能已装好，重跑会自动跳过"（幂等兜底）
   if (r.error && r.error.code === 'ETIMEDOUT') return { status: -1, timedout: true };
   return { status: r.status };
-}
-
-function versionOf(cmd) {
-  // 版本探测已抽到 lib/detect.js（接口 B 共用）
-  return detect.versionOf(cmd);
 }
 
 function getOut(cmd, args) {
@@ -175,7 +170,7 @@ async function main() {
 
   console.log('');
   console.log('┌──────────────────────────────────────────────┐');
-  console.log('│  ClaudeInstall 一键安装器 v0.2.2           │');
+  console.log('│  ClaudeInstall 一键安装器 v0.4.2           │');
   console.log(`│  装 Claude Code + 接入 ${prov.label}${' '.repeat(20 - prov.label.length)}│`);
   console.log('└──────────────────────────────────────────────┘');
   if (DRY_RUN) warn('干跑模式（--dry-run）：只打印要做什么，不改任何文件');
@@ -183,8 +178,8 @@ async function main() {
 
   // ---- ① 环境检测 ----
   console.log('\n── ① 环境检测 ──');
-  const nodeVer = versionOf('node');
-  const npmVer = versionOf('npm');
+  const nodeVer = detect.versionOf('node');
+  const npmVer = detect.versionOf('npm');
   const claude = findClaude();
   const claudeVer = claude.found ? claude.version : null;
   nodeVer ? ok(`Node.js ${nodeVer}`) : warn('未检测到 Node.js');
@@ -230,9 +225,13 @@ async function main() {
   } else {
     console.log('\n── ② 设置国内 npm 镜像（加速安装）──');
     const currentRegistry = getOut('npm', ['config', 'get', 'registry']);
-    if (currentRegistry && currentRegistry.includes('npmmirror')) {
+    // R-08 / S-07（9-10 外审）：原用 includes('npmmirror') 子串匹配 —— 像 `https://x-npmmirror.evil.example`
+    // 会被误判成"已是国内镜像"从而跳过设置、拿恶意源装包。改为解析 hostname 精确比对；
+    // 解析失败（非 URL / 奇怪值）返回 false → 按"自定义镜像"处理，保留用户设置、不乱动。
+    const hostIs = (reg, host) => { try { return new URL(reg).hostname === host; } catch { return false; } };
+    if (currentRegistry && hostIs(currentRegistry, 'registry.npmmirror.com')) {
       ok('npm 镜像已是 npmmirror，跳过');
-    } else if (currentRegistry && !currentRegistry.includes('registry.npmjs.org')) {
+    } else if (currentRegistry && !hostIs(currentRegistry, 'registry.npmjs.org')) {
       info(`检测到已有自定义镜像：${currentRegistry}，保留你的设置`);
     } else {
       const r = run('npm', ['config', 'set', 'registry', 'https://registry.npmmirror.com']);

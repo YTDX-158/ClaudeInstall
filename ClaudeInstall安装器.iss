@@ -6,8 +6,7 @@
 ; =====================================================
 
 #define AppName "ClaudeInstall"
-#define AppVersion "0.4.1"
-#define AppExeName "ClaudeInstall一键安装.bat"
+#define AppVersion "0.4.2"
 #define BatchCmd "ClaudeInstall一键安装.bat"
 
 [Setup]
@@ -124,7 +123,7 @@ begin
     'Key 只用于写入本地配置（~/.claude/settings.json），不会上传。' + #13#10 +
     'Key 只显示一次，如果忘了可以回 platform 重新创建一个。' + #13#10 +
     '提示：粘贴时按 Ctrl+V，或用右键粘贴。');
-  KeyPage.Add('API Key：', False);
+  KeyPage.Add('API Key：', True);   // R2c(9-10 外审 S-09)：密码模式，输入回显为 ***，防旁观/录屏
   KeyPage.Values[0] := '';
 
   // 【v0.4 推广】完成页放「获取 ClaudeNeko」按钮（可点击 → 打开下载页）

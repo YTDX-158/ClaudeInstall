@@ -15,6 +15,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const https = require('node:https');
+const { pipeline } = require('node:stream');
 
 const TEMP_DIR = path.join(os.tmpdir(), 'ClaudeInstall');
 
@@ -35,15 +36,20 @@ function download(url, dest, { timeoutMs = 120000, redirects = 0, onProgress } =
     const done = (ok, info = {}) => {
       if (settled) return;
       settled = true;
+      // 清理 .part（失败路径 / rename 失败路径共用；清理本身的错误忽略）
+      const cleanup = () => { try { fs.unlinkSync(tmp); } catch (e) { /* 忽略清理错误 */ } };
       if (ok) {
         try {
           fs.renameSync(tmp, dest);
+          resolve({ ok: true, size: received, ...info });
         } catch (e) {
-          return done(false, { error: 'rename:' + e.message });
+          // R-04（9-10 外审）：rename 失败时**不能**再递归调 done(false) —— settled 已置 true
+          // 会被开头的 if 拦掉，导致 Promise 永不 resolve、下载流程挂死。这里直接清理 + 返回失败。
+          cleanup();
+          resolve({ ok: false, size: received, error: 'rename:' + e.message });
         }
-        resolve({ ok: true, size: received, ...info });
       } else {
-        try { fs.unlinkSync(tmp); } catch (e) { /* 忽略清理错误 */ }
+        cleanup();
         resolve({ ok: false, size: received, ...info });
       }
     };
@@ -72,12 +78,11 @@ function download(url, dest, { timeoutMs = 120000, redirects = 0, onProgress } =
         onProgress?.({ received, total });
       });
       const ws = fs.createWriteStream(tmp);
-      ws.on('error', (e) => {
-        // 写盘失败（磁盘满/权限/占用）→ 走失败路径清理 .part，不抛未捕获异常（雷13）
-        done(false, { error: 'write:' + e.message });
-      });
-      res.pipe(ws);
-      res.on('end', () => {
+      // R-05（9-10 外审）：原实现监听 res 'end' 就改名 —— 此时写入流可能还没 flush 完，
+      // 会拿到不完整文件。改用 pipeline：等写入流真正 finish（或出错）再校验 + 改名。
+      // pipeline 自带错误传导（写盘失败/连接中断都进 cb），故不再单独挂 ws.on('error')（雷13 同义）
+      pipeline(res, ws, (err) => {
+        if (err) return done(false, { error: 'write:' + err.message });
         // 有 content-length 就严格比对；没有则要求至少收到字节
         const sizeOk = total > 0 ? received === total : received > 0;
         if (!sizeOk) return done(false, { error: `size mismatch ${received}/${total}` });

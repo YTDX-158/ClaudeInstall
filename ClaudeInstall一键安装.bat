@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title ClaudeInstall Installer v0.2
+title ClaudeInstall Installer v0.4.2
 echo.
 echo  ============================================
-echo    ClaudeInstall Installer v0.2
+echo    ClaudeInstall Installer v0.4.2
 echo    Auto install Node + Git + Claude Code + DeepSeek
 echo    Runs 100%% locally, uploads nothing
 echo  ============================================
@@ -141,8 +141,18 @@ if errorlevel 1 exit /b 1
 :node_downloaded
 if not exist "%DEST%" goto :node_dl_missing
 echo  [2/3] Verifying Node.js installer signature...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=Get-AuthenticodeSignature -LiteralPath '%DEST%'; if($s.Status -eq 'Valid'){exit 0}else{Write-Host ('  signature status: '+$s.Status); exit 1}"
+rem  R1c(9-10 外审 S-05)：验签加"签发者身份"校验。exit 0=通过 / 1=签名无效(红停) / 2=签名有效但签发者不是 OpenJS(黄警继续)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=Get-AuthenticodeSignature -LiteralPath '%DEST%'; if($s.Status -ne 'Valid'){ Write-Host ('  signature status: '+$s.Status); exit 1 }; if(-not $s.SignerCertificate -or ($s.SignerCertificate.Subject -notmatch 'OpenJS Foundation')){ Write-Host ('  unexpected signer: '+$s.SignerCertificate.Subject); exit 2 }; exit 0"
+if errorlevel 2 goto :node_signer_warn
 if errorlevel 1 goto :node_sign_bad
+goto :node_install_now
+
+:node_signer_warn
+echo  [!] Warning: signed by an unexpected publisher (expected OpenJS Foundation).
+echo      The signature itself is valid - continuing, but please double-check your network.
+goto :node_install_now
+
+:node_install_now
 echo  [2/3] Signature OK. Installing - a small progress window may appear:
 msiexec /i "%DEST%" /qb /norestart /l*v "%TMP_DIR%\node_install.log"
 if errorlevel 1 goto :node_install_failed_sub

@@ -7,14 +7,14 @@
  *   - 验证用「完整路径 C:\Program Files\Git\cmd\git.exe」而不是 PATH 里的 git
  *     （雷3 PATH 不刷新，当前窗口 `git` 会假失败；安装器 exit code 也不可靠）
  *   - 安装用 PowerShell Start-Process -Verb RunAs 触发 UAC，-Wait 等待完成
- *     （雷1 身份模型：本模块只做"装"，配置写入由 install.js 普通用户身份完成）
+ *     （雷1 身份模型：安装器**全程以管理员身份运行**——iss 设 PrivilegesRequired=admin，
+ *      向导提权一次、bat 继承；本模块只负责"装"，配置写入由 install.js 在同一次提权进程内完成）
  *   - 版本固定写死（方案：固定稳定版，减少脆弱点；更新 = 改下面两行）
  *   - 失败返回 { installed:false, error }，由调用方黄警继续（不阻塞主流程）
  */
 'use strict';
 
 const fs = require('node:fs');
-const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const detect = require('./detect.js');
@@ -53,17 +53,23 @@ function installSilent(exePath) {
   return r.status === 0;
 }
 
-// ---------- 签名验证（R1 安全加固）----------
-// 装前验 Authenticode 签名：签名有效才装。Git 走黄警降级——签名是个人证书，
-// 链不稳/本机缺证书时由调用方提示手动装兜底，不红停阻塞主流程。
+// ---------- 签名验证（R1 安全加固 + 9-10 外审 S-05）----------
+// 装前验 Authenticode 签名：签名有效 + 签发者身份正确才认。
+// 返回三态：'ok' | 'signer-mismatch'（签名有效但签发者不符）| 'invalid'（签名无效）
+// Git 走黄警降级——签名是个人证书，链不稳/本机缺证书时由调用方提示手动装兜底，不红停阻塞主流程。
 function verifySignature(exePath) {
   const ps =
     `$s=Get-AuthenticodeSignature -LiteralPath '${exePath}'; ` +
-    `if($s.Status -eq 'Valid'){exit 0}else{Write-Host ('  signature status: '+$s.Status); exit 1}`;
+    `if($s.Status -ne 'Valid'){ Write-Host ('  signature status: '+$s.Status); exit 1 }; ` +
+    `if(-not $s.SignerCertificate -or ($s.SignerCertificate.Subject -notmatch 'Schindelin')){ ` +
+    `Write-Host ('  unexpected signer: '+$s.SignerCertificate.Subject); exit 2 }; ` +
+    `exit 0`;
   const r = spawnSync('powershell',
     ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps],
     { encoding: 'utf-8', shell: false, timeout: 30000 });
-  return r.status === 0;
+  if (r.status === 0) return 'ok';
+  if (r.status === 2) return 'signer-mismatch';
+  return 'invalid';
 }
 
 // ---------- 主入口 ----------
@@ -94,10 +100,16 @@ async function ensureGit() {
       error: `Git 下载失败（${d.error}）。可手动到 https://git-scm.com 下载安装，装好后重跑本安装器即可跳过。` };
   }
   process.stdout.write(`\r  [下载完成] ${(d.size / 1048576).toFixed(1)} MB\n`);
-  // R1b：Git 验签（黄警降级——签名无效则提示手动装，不装、不阻塞主体）
-  if (!verifySignature(exe)) {
+  // R1b + S-05（9-10 外审）：Git 验签 ——
+  //   签名无效 → 黄警降级（提示手动装，不阻塞主流程）
+  //   签名有效但签发者不是 Git for Windows 维护者（Johannes Schindelin）→ 警告但继续（黄警）
+  const sig = verifySignature(exe);
+  if (sig === 'invalid') {
     return { installed: false, action: 'failed',
       error: 'Git 安装包签名验证未通过（可能下载被篡改，或本机证书缺失）。请手动到 https://git-scm.com 下载安装，装好后重跑即可跳过。' };
+  }
+  if (sig === 'signer-mismatch') {
+    console.log('  [警告] Git 安装包签发者与预期不符（预期 Johannes Schindelin）——签名本身有效，继续安装；如非官方渠道下载请谨慎。');
   }
   console.log('  [提示] 签名验证通过，正在安装 Git —— 屏幕会出现安装进度小窗，装完自动关闭，请稍候…');
 

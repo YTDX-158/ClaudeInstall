@@ -1,4 +1,4 @@
-# ClaudeInstall 一键安装器 v0.4.1
+# ClaudeInstall 一键安装器 v0.4.2
 
 给国内小白的一键安装器：**自动装 Node + Git + Claude Code → 填一个 key → 直接能用**。
 不弹登录、不用手改任何配置文件。
@@ -122,6 +122,12 @@ node scripts/install.js
 - 2026-09-06 **v0.2.2-fix** ✅：修复 download 302 重定向**挂起**（registry→CDN 改串行跟随 + 递归带进度回调，302 实测下载通过、进度不丢）+ Git 下载断流容忍 120s→600s + banner 版本对齐 + 过时注释清理
 - 2026-09-10 **v0.3 新手引导向导页** ✅：欢迎页后插 3 页带图引导（页A cmd 引导·双图并排 / 页B DeepSeek 注册 / 页C 充值+拿key），配图 4 张 BMP 放 `assets/`（Inno `TBitmapImage` 只吃 BMP 不吃 PNG）；填 Key 页副标题改为指向前两页（commit cace0cb）
 - 2026-09-10 **GitHub Release v0.3 发布** ✅：本仓库首个 Release（https://github.com/YTDX-158/ClaudeInstall/releases/tag/v0.3），资产 `ClaudeInstall-Setup-v0.3.exe`（2.24MB）。⚠️ 注意：**GitHub Release 资产名不支持中文**——必须先复制成英文名再上传，否则会被转义成乱码
+- 2026-09-10 **v0.4.2 外审修复** ✅：GPT 外部静态审查出 20 项 → 逐条读代码核实后修 10 项
+  · **P1 两个真 bug（download.js）**：① `done()` 里 rename 失败时递归调用被 `settled` 拦掉 → **Promise 永挂、下载卡死** → 改为直接清理+返回失败 ② `res.on('end')` 就改名（写入流可能没 flush 完，会拿到半个文件）→ 改用 `stream.pipeline` 等真正 finish
+  · **P2 清理 6 项**：版本号 `v0.2/v0.2.2`→`v0.4.2`（bat ×2 / install.js ×2 / iss）· 删死代码（iss `AppExeName` 宏 / gitInstall.js 未用的 `os` import / install.js 的 `versionOf` 转发函数）· 修正「普通用户身份」过时注释（实际全程 admin）· **Key 输入框改密码模式**（`Add(prompt, True)`，回显 `***`）
+  · **P3 加固 2 项**：① npm registry 由 `includes('npmmirror')` 子串匹配 → `new URL().hostname` 精确匹配 ② **验签加签发者身份校验**（Node=**OpenJS Foundation** / Git=**Johannes Schindelin**，按真实包实测值写；不符走**黄警不拦死**，防误杀）
+  · **未修（已评估记录）**：S-01（bat `%*` 展开注入——彻底修需重构传参链路，改动面>收益）· S-02/03/04/06/08/10 + R-06/07/08（需"攻击者已在本机"前提的低危项或设计取舍）
+  · **验证**：download.js 三用例实测（正常下载走302 / rename失败不挂起 / 坏域名快失败）· 验签三用例（Node真包 exit0 / Git真包 exit0 / 反例Microsoft包 exit2）· dry-run 全流程 · ISCC 编译 · 向导显示 v0.4.2
 - 2026-09-10 **v0.4.1** ✅：完成页按钮指向**蓝奏云网盘**（https://wwbkn.lanzoum.com/b01giav0pi，国内直连免登录）+ 按钮下加一行「下载密码：YTDX666」；另：冒烟模式（CI_SMOKE=1）跳过 key 校验，便于自动化验证向导全流程
 - 2026-09-10 **v0.4 推广入口** ✅：向导**完成页**加「获取 ClaudeNeko（图形界面版）」按钮（可点击 → 用默认浏览器打开 ClaudeNeko 的下载页），作为 ClaudeInstall → ClaudeNeko 的引流入口（CI 定位=Neko 前置）
 
