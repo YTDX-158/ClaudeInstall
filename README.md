@@ -1,4 +1,4 @@
-# ClaudeInstall 一键安装器 v0.3
+# ClaudeInstall 一键安装器 v0.4
 
 给国内小白的一键安装器：**自动装 Node + Git + Claude Code → 填一个 key → 直接能用**。
 不弹登录、不用手改任何配置文件。
@@ -122,6 +122,7 @@ node scripts/install.js
 - 2026-09-06 **v0.2.2-fix** ✅：修复 download 302 重定向**挂起**（registry→CDN 改串行跟随 + 递归带进度回调，302 实测下载通过、进度不丢）+ Git 下载断流容忍 120s→600s + banner 版本对齐 + 过时注释清理
 - 2026-09-10 **v0.3 新手引导向导页** ✅：欢迎页后插 3 页带图引导（页A cmd 引导·双图并排 / 页B DeepSeek 注册 / 页C 充值+拿key），配图 4 张 BMP 放 `assets/`（Inno `TBitmapImage` 只吃 BMP 不吃 PNG）；填 Key 页副标题改为指向前两页（commit cace0cb）
 - 2026-09-10 **GitHub Release v0.3 发布** ✅：本仓库首个 Release（https://github.com/YTDX-158/ClaudeInstall/releases/tag/v0.3），资产 `ClaudeInstall-Setup-v0.3.exe`（2.24MB）。⚠️ 注意：**GitHub Release 资产名不支持中文**——必须先复制成英文名再上传，否则会被转义成乱码
+- 2026-09-10 **v0.4 推广入口** ✅：向导**完成页**加「获取 ClaudeNeko（图形界面版）」按钮（可点击 → 用默认浏览器打开 ClaudeNeko 的下载页），作为 ClaudeInstall → ClaudeNeko 的引流入口（CI 定位=Neko 前置）
 
 ## 下一步
 

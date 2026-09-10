@@ -6,7 +6,7 @@
 ; =====================================================
 
 #define AppName "ClaudeInstall"
-#define AppVersion "0.3"
+#define AppVersion "0.4"
 #define AppExeName "ClaudeInstall一键安装.bat"
 #define BatchCmd "ClaudeInstall一键安装.bat"
 
@@ -49,6 +49,7 @@ var
   PageA, PageB, PageC: TWizardPage;
   BmpA, BmpA2, BmpB, BmpC: TBitmapImage;
   LblA, LblB, LblC: TNewStaticText;
+  NekoBtn: TNewButton;
 
 // v0.3：在自定义页上放一张引导图（新建控件，宽度撑满可用区，高 190）
 procedure SetupGuideImage(Page: TWizardPage; const FileName: String; ALeft, ATop, AWidth, AHeight: Integer; var Img: TBitmapImage);
@@ -70,6 +71,15 @@ begin
   Lbl.AutoSize := False;
   Lbl.WordWrap := True;
   Lbl.SetBounds(0, TopPos, Page.Surface.Width, Page.Surface.Height - TopPos);
+end;
+
+// v0.4 推广：点「获取 ClaudeNeko」按钮 → 用默认浏览器打开下载页
+procedure OpenNekoPage(Sender: TObject);
+var
+  ResultCode: Integer;
+begin
+  ShellExec('open', 'https://github.com/YTDX-158/ClaudeNeko/releases',
+            '', '', SW_SHOWNORMAL, ewNoWait, ResultCode);
 end;
 
 // 建 v0.3 三个新手引导页 + "填 API Key"页
@@ -115,6 +125,17 @@ begin
     '提示：粘贴时按 Ctrl+V，或用右键粘贴。');
   KeyPage.Add('API Key：', False);
   KeyPage.Values[0] := '';
+
+  // 【v0.4 推广】完成页放「获取 ClaudeNeko」按钮（可点击 → 打开下载页）
+  // 位置跟完成文字左对齐、宽度占满文字区（不压左侧插图、不截断文字）
+  NekoBtn := TNewButton.Create(WizardForm.FinishedPage);
+  NekoBtn.Parent := WizardForm.FinishedPage;
+  NekoBtn.Caption := '获取 ClaudeNeko（图形界面版）';
+  NekoBtn.Height := 32;
+  NekoBtn.Left := WizardForm.FinishedLabel.Left;
+  NekoBtn.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + 14;
+  NekoBtn.Width := WizardForm.FinishedPage.ClientWidth - NekoBtn.Left - 20;
+  NekoBtn.OnClick := @OpenNekoPage;
 end;
 
 // R2a：key 白名单校验——只许字母数字 + 下划线/点/连字符（Inno Pascal 无正则，手写字符循环）。
