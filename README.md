@@ -121,10 +121,13 @@ node scripts/install.js
 - 2026-09-06 **v0.2.2 安全加固 + 瘦身** ✅：装前 **Authenticode 验签**（Node 红停 / Git 黄警降级）+ key 白名单校验（iss 手写循环 + install.js，防 cmd 注入/粘贴带杂质）+ npm 安装 600s 超时提示 + bat 下载前清半截残留 + 删 download.js 死代码 + 删 detect.js 硬编码开发者路径 + 文档同步
 - 2026-09-06 **v0.2.2-fix** ✅：修复 download 302 重定向**挂起**（registry→CDN 改串行跟随 + 递归带进度回调，302 实测下载通过、进度不丢）+ Git 下载断流容忍 120s→600s + banner 版本对齐 + 过时注释清理
 - 2026-09-10 **v0.3 新手引导向导页** ✅：欢迎页后插 3 页带图引导（页A cmd 引导·双图并排 / 页B DeepSeek 注册 / 页C 充值+拿key），配图 4 张 BMP 放 `assets/`（Inno `TBitmapImage` 只吃 BMP 不吃 PNG）；填 Key 页副标题改为指向前两页（commit cace0cb）
+- 2026-09-10 **GitHub Release v0.3 发布** ✅：本仓库首个 Release（https://github.com/YTDX-158/ClaudeInstall/releases/tag/v0.3），资产 `ClaudeInstall-Setup-v0.3.exe`（2.24MB）。⚠️ 注意：**GitHub Release 资产名不支持中文**——必须先复制成英文名再上传，否则会被转义成乱码
 
 ## 下一步
 
-1. **exe 手动 UAC 验证**（双击 `ClaudeInstall安装器_v0.3.exe` → 点「是」→ 走完向导，确认 3 页引导显示）
-2. 虚拟机真机验证（干净机器全流程：Node/Git 自动装、UAC 预告、配置写对账户）
-3. 多中转服务商选项
-4. GitHub Release + 网盘分发
+- ⬜ **网盘分发**：GitHub Release 国内访问慢，需配国内下载渠道（蓝奏云 / 阿里云盘等）
+- ⬜ **多中转服务商选项**：支持 DeepSeek 以外的中转（`scripts/lib/config.js` 的 provider 映射已预留 qwen / volcengine，接 UI 即可）
+- ⬜ **双向互装**：与 ClaudeNeko 互相检测 + 可选安装引导（配置打通已无需做）—— 等 ClaudeNeko 权限 P1 落地 + 真发人时整条做
+- ⬜ **切官方原生包**（触发式）：npm 装 claude 已被官方标记 deprecated，等"npm 装拉不到新版"再动；届时 ClaudeNeko 的 `findClaudeBin`（按 npm 固定路径找 claude.exe）需一并跟改
+
+> **已完成**：exe 手动 UAC 验证（v0.3，含 3 页引导）· 真机验证（9-07：Node/Git 自动装 + UAC 预告 + 配置写对）· GitHub Release v0.3（9-10，首个 Release）
