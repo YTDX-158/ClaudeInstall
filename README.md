@@ -127,9 +127,8 @@ node scripts/install.js
 
 ## 下一步
 
-- ⬜ **网盘分发**：GitHub Release 国内访问慢，需配国内下载渠道（蓝奏云 / 阿里云盘等）
 - ⬜ **多中转服务商选项**：支持 DeepSeek 以外的中转（`scripts/lib/config.js` 的 provider 映射已预留 qwen / volcengine，接 UI 即可）
 - ⬜ **双向互装**：与 ClaudeNeko 互相检测 + 可选安装引导（配置打通已无需做）—— 等 ClaudeNeko 权限 P1 落地 + 真发人时整条做
 - ⬜ **切官方原生包**（触发式）：npm 装 claude 已被官方标记 deprecated，等"npm 装拉不到新版"再动；届时 ClaudeNeko 的 `findClaudeBin`（按 npm 固定路径找 claude.exe）需一并跟改
 
-> **已完成**：exe 手动 UAC 验证（v0.3，含 3 页引导）· 真机验证（9-07：Node/Git 自动装 + UAC 预告 + 配置写对）· GitHub Release v0.3（9-10，首个 Release）
+> **已完成**：exe 手动 UAC 验证（v0.3，含 3 页引导）· 真机验证（9-07：Node/Git 自动装 + UAC 预告 + 配置写对）· GitHub Release v0.3 / v0.4 / v0.4.1 · **网盘分发**（9-10：蓝奏云**文件夹分享**，链接固定 + 免登录下载，用于推广入口）
