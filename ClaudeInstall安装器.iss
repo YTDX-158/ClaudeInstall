@@ -1,12 +1,12 @@
 ; =====================================================
-; ClaudeInstall 安装器（Inno Setup）· v0.2
+; ClaudeInstall 安装器（Inno Setup）· v0.4.4
 ; 给国内小白：向导收 DeepSeek Key → 调 ClaudeInstall一键安装.bat
 ;   自动装 Node + Git + Claude Code + 写配置（跳过登录）
 ; 编译：ISCC.exe "ClaudeInstall安装器.iss"
 ; =====================================================
 
 #define AppName "ClaudeInstall"
-#define AppVersion "0.4.2"
+#define AppVersion "0.4.4"
 #define BatchCmd "ClaudeInstall一键安装.bat"
 
 [Setup]

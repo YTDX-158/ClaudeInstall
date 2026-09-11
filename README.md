@@ -1,4 +1,4 @@
-# ClaudeInstall 一键安装器 v0.4.2
+# ClaudeInstall 一键安装器 v0.4.4
 
 给国内小白的一键安装器：**自动装 Node + Git + Claude Code → 填一个 key → 直接能用**。
 不弹登录、不用手改任何配置文件。
@@ -128,6 +128,8 @@ node scripts/install.js
   · **P3 加固 2 项**：① npm registry 由 `includes('npmmirror')` 子串匹配 → `new URL().hostname` 精确匹配 ② **验签加签发者身份校验**（Node=**OpenJS Foundation** / Git=**Johannes Schindelin**，按真实包实测值写；不符走**黄警不拦死**，防误杀）
   · **未修（已评估记录）**：S-01（bat `%*` 展开注入——彻底修需重构传参链路，改动面>收益）· S-02/03/04/06/08/10 + R-06/07/08（需"攻击者已在本机"前提的低危项或设计取舍）
   · **验证**：download.js 三用例实测（正常下载走302 / rename失败不挂起 / 坏域名快失败）· 验签三用例（Node真包 exit0 / Git真包 exit0 / 反例Microsoft包 exit2）· dry-run 全流程 · ISCC 编译 · 向导显示 v0.4.2
+- 2026-09-11 **v0.4.4 修正 `[1m]` 后缀误删** ✅：v0.4.3 把默认模型名改成 `deepseek-flash`、**去掉了 `[1m]` 后缀——那是错的**。后缀不是版本标记，是给 Claude Code CLI 的**上下文窗口声明**（不加 → CLI 报 `unrecognized_model` 并按 200k 假设上下文，auto-compact 提前触发，本可到 1M）。默认模型名恢复为 **`deepseek-flash[1m]`**；bat / install.js / iss / README / 说明.txt 版本号 → v0.4.4 并重新打包。⚠️ v0.4.3 **从未外发**（包打好后被冒烟验证拦下），无用户受影响
+- 2026-09-11 **v0.4.3 模型名跟进** ✅：DeepSeek 于 9-10 发布 **V4.1-Flash**，旧模型名 `deepseek-v4-flash` 已退役（官方仍兼容路由，但不保证长期）。`scripts/install.js` 的 provider 表里**写死的默认模型名**跟进为官方新名 **`deepseek-flash[1m]`**。⚠️ **`[1m]` 后缀必须保留**——它是给 Claude Code CLI 的**上下文窗口声明**，不是版本标记：CLI 不认识模型名时会按 200k 假设上下文、让 auto-compact 提前触发（本可到 1M）。bat / install.js / iss / README 版本号 → v0.4.3 并重新打包
 - 2026-09-10 **v0.4.1** ✅：完成页按钮指向**蓝奏云网盘**（https://wwbkn.lanzoum.com/b01giav0pi，国内直连免登录）+ 按钮下加一行「下载密码：YTDX666」；另：冒烟模式（CI_SMOKE=1）跳过 key 校验，便于自动化验证向导全流程
 - 2026-09-10 **v0.4 推广入口** ✅：向导**完成页**加「获取 ClaudeNeko（图形界面版）」按钮（可点击 → 用默认浏览器打开 ClaudeNeko 的下载页），作为 ClaudeInstall → ClaudeNeko 的引流入口（CI 定位=Neko 前置）
 

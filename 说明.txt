@@ -5,7 +5,7 @@ ClaudeInstall — Claude 一键安装/配置工具
 
 用法
 ────────────────────────────
-· 小白：双击「ClaudeInstall安装器_v0.3.exe」，跟着向导走（每一步都有图和说明）
+· 小白：双击「ClaudeInstall安装器_v0.4.4.exe」，跟着向导走（每一步都有图和说明）
 · 或者：「ClaudeInstall一键安装.bat」（英文终端版）
 
 

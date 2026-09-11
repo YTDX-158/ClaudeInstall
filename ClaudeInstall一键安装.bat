@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title ClaudeInstall Installer v0.4.2
+title ClaudeInstall Installer v0.4.4
 echo.
 echo  ============================================
-echo    ClaudeInstall Installer v0.4.2
+echo    ClaudeInstall Installer v0.4.4
 echo    Auto install Node + Git + Claude Code + DeepSeek
 echo    Runs 100%% locally, uploads nothing
 echo  ============================================

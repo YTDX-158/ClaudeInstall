@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * ClaudeInstall 一键安装器 · 核心脚本 v0.4.2
+ * ClaudeInstall 一键安装器 · 核心脚本 v0.4.4
  * =====================================
  * 目标：把「装 Claude Code + 接 DeepSeek」压成一条命令。
  *   检测 Node → 设国内 npm 镜像 → 装 claude-code → 填 key → 自动写配置（跳过登录）→ 验证
@@ -47,7 +47,8 @@ const PROVIDERS = {
   deepseek: {
     label: 'DeepSeek',
     baseUrl: 'https://api.deepseek.com/anthropic',
-    model: 'deepseek-v4-flash[1m]',
+    // [1m] 后缀是给 Claude Code CLI 的上下文窗口声明（1M），不是版本标记，勿去掉
+    model: 'deepseek-flash[1m]',
     keyHint: '去 platform.deepseek.com 创建 API Key（key 只显示一次，务必复制保存）',
   },
   // 预留：豆包 / 通义 / 其他 Anthropic 兼容接口
@@ -170,7 +171,7 @@ async function main() {
 
   console.log('');
   console.log('┌──────────────────────────────────────────────┐');
-  console.log('│  ClaudeInstall 一键安装器 v0.4.2           │');
+  console.log('│  ClaudeInstall 一键安装器 v0.4.4           │');
   console.log(`│  装 Claude Code + 接入 ${prov.label}${' '.repeat(20 - prov.label.length)}│`);
   console.log('└──────────────────────────────────────────────┘');
   if (DRY_RUN) warn('干跑模式（--dry-run）：只打印要做什么，不改任何文件');
